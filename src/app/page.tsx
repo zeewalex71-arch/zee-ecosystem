@@ -1,26 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { signIn, signOut } from "next-auth/react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { useAuthStore } from "@/stores/app-store";
+import AuthFlow from "@/components/auth/auth-flow";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,192 +21,445 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
 import {
-  Zap,
-  ShoppingBag,
-  Scissors,
-  Palette,
-  Video,
-  Truck,
-  Leaf,
-  UtensilsCrossed,
-  Menu,
+  Home,
   Search,
   User,
-  ShoppingCart,
-  Bell,
-  ChevronRight,
-  Star,
-  Shield,
-  MessageCircle,
-  Wallet,
-  TrendingUp,
-  Users,
-  Clock,
-  ArrowRight,
-  Sparkles,
-  Store,
-  Code,
-  FileText,
-  Music,
-  Camera,
-  Home,
-  Smartphone,
-  Wrench,
-  GraduationCap,
-  Shirt,
-  SprayCan,
-} from "lucide-react";
-
-// Icon mapping for categories
-const iconMap: Record<string, React.ElementType> = {
-  Palette,
-  Video,
-  Image: Sparkles,
-  FileText,
-  Code,
-  Music,
-  TrendingUp,
-  MessageCircle,
+  ShoppingBag,
+  Scissors,
   Shirt,
   Leaf,
-  UtensilsCrossed,
-  Smartphone,
-  Home,
-  Sparkles,
-  Scissors,
   Truck,
-  Broom: SprayCan,
   Wrench,
-  GraduationCap,
-  Camera,
-};
+  Zap,
+  Menu,
+  Bell,
+  ChevronRight,
+  ChevronLeft,
+  Star,
+  Shield,
+  MapPin,
+  Clock,
+  Award,
+  Package,
+  Plane,
+  ChefHat,
+  Sparkles,
+  Heart,
+  LogOut,
+  Settings,
+  LayoutDashboard,
+  Wallet,
+  CheckCircle2,
+  MessageCircle,
+  Eye,
+  EyeOff,
+  Loader2,
+  Mail,
+  Lock,
+  Users,
+  Globe,
+  ArrowRight,
+  Play,
+  RefreshCw,
+} from "lucide-react";
 
-const ZEEGIG_CATEGORIES = [
-  { id: "ai-art", label: "AI Art & Design", icon: "Palette" },
-  { id: "video-editing", label: "Video Editing", icon: "Video" },
-  { id: "graphics-design", label: "Graphics Design", icon: "Sparkles" },
-  { id: "writing-translation", label: "Writing & Translation", icon: "FileText" },
-  { id: "programming", label: "Programming & Tech", icon: "Code" },
-  { id: "music-audio", label: "Music & Audio", icon: "Music" },
-  { id: "digital-marketing", label: "Digital Marketing", icon: "TrendingUp" },
-  { id: "consulting", label: "Consulting", icon: "MessageCircle" },
+// Hero Slider Images - African Genius Theme
+const HERO_SLIDES = [
+  {
+    id: 1,
+    image: "https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=1920&h=1080&fit=crop",
+    title: "African Fashion",
+    subtitle: "Ankara, Aso Oke & Bespoke Designs",
+  },
+  {
+    id: 2,
+    image: "https://images.unsplash.com/photo-1515586838455-8f8f940d6853?w=1920&h=1080&fit=crop",
+    title: "Wellness & Herbs",
+    subtitle: "Vetted Traditional Medicine & Organic Products",
+  },
+  {
+    id: 3,
+    image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=1920&h=1080&fit=crop",
+    title: "Local Services",
+    subtitle: "Barbers, Plumbers, Electricians & More",
+  },
+  {
+    id: 4,
+    image: "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=1920&h=1080&fit=crop",
+    title: "Fashion Exports",
+    subtitle: "Ship African Fashion Worldwide",
+  },
+  {
+    id: 5,
+    image: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=1920&h=1080&fit=crop",
+    title: "Diaspora Foods",
+    subtitle: "Export Nigerian Food Items Globally",
+  },
 ];
 
-const ZEEFIX_CATEGORIES = {
-  physical: [
-    { id: "fashion", label: "Fashion & Apparel", icon: "Shirt" },
-    { id: "herbs", label: "Herbs & Natural Products", icon: "Leaf" },
-    { id: "food", label: "Food & Groceries", icon: "UtensilsCrossed" },
-    { id: "electronics", label: "Electronics", icon: "Smartphone" },
-    { id: "home-garden", label: "Home & Garden", icon: "Home" },
-    { id: "beauty", label: "Beauty & Personal Care", icon: "Sparkles" },
-  ],
-  service: [
-    { id: "barbers", label: "Barbers & Salons", icon: "Scissors" },
-    { id: "errand-runners", label: "Errand Runners", icon: "Truck" },
-    { id: "cleaning", label: "Cleaning Services", icon: "Broom" },
-    { id: "repairs", label: "Repairs & Maintenance", icon: "Wrench" },
-    { id: "tutoring", label: "Tutoring & Lessons", icon: "GraduationCap" },
-    { id: "photography", label: "Photography", icon: "Camera" },
-  ],
-};
-
-// Mock hero ads
-const heroAds = [
-  {
-    id: "1",
-    title: "MTN Nigeria - Unlimited Data",
-    description: "Get unlimited data for your business starting at ₦10,000/month",
-    imageUrl: "https://images.unsplash.com/photo-1551650975-87deedd944c3?w=1200&h=400&fit=crop",
-    linkUrl: "#",
-  },
-  {
-    id: "2",
-    title: "ZeeGig Pro Services",
-    description: "Professional digital services at your fingertips",
-    imageUrl: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=1200&h=400&fit=crop",
-    linkUrl: "#",
-  },
-  {
-    id: "3",
-    title: "ZeeFix Local Services",
-    description: "Find trusted local service providers near you",
-    imageUrl: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=1200&h=400&fit=crop",
-    linkUrl: "#",
-  },
+// Service Categories
+const LOCAL_SERVICES = [
+  { id: "barbers", label: "Barbers", icon: Scissors, color: "bg-gold-500", count: "2.5k+" },
+  { id: "laundry", label: "Laundry", icon: Sparkles, color: "bg-teal", count: "1.2k+" },
+  { id: "plumbers", label: "Plumbers", icon: Wrench, color: "bg-coral", count: "800+" },
+  { id: "electricians", label: "Electricians", icon: Zap, color: "bg-gold-400", count: "950+" },
+  { id: "ac-techs", label: "AC Technicians", icon: Home, color: "bg-teal", count: "400+" },
+  { id: "errands", label: "Errand Runners", icon: Truck, color: "bg-gold-500", count: "600+" },
 ];
 
-// Mock featured listings
-const featuredListings = [
+// Fashion Categories
+const FASHION_CATEGORIES = [
+  { id: "ankara", label: "Ankara Styles", image: "https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=400&h=400&fit=crop", count: 234, priceRange: "₦5,000 - ₦150,000" },
+  { id: "aso-oke", label: "Aso Oke", image: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=400&h=400&fit=crop", count: 89, priceRange: "₦15,000 - ₦500,000" },
+  { id: "ready-to-wear", label: "Ready to Wear", image: "https://images.unsplash.com/photo-1558171813-4c088753af8f?w=400&h=400&fit=crop", count: 456, priceRange: "₦3,000 - ₦80,000" },
+  { id: "bespoke", label: "Bespoke Tailoring", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop", count: 128, priceRange: "₦20,000 - ₦300,000" },
+];
+
+// Wellness Categories
+const WELLNESS_CATEGORIES = [
+  { id: "herbs", label: "Herbal Medicine", image: "https://images.unsplash.com/photo-1515586838455-8f8f940d6853?w=400&h=400&fit=crop", verified: true },
+  { id: "creams", label: "Handmade Creams", image: "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=400&h=400&fit=crop", verified: true },
+  { id: "cosmetics", label: "Organic Cosmetics", image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=400&fit=crop", verified: true },
+  { id: "agbo", label: "Traditional Agbo", image: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=400&h=400&fit=crop", verified: true },
+];
+
+// Featured Gigs with Pricing Tiers
+const FEATURED_GIGS = [
   {
     id: "1",
-    title: "Professional Logo Design",
-    price: 15000,
+    title: "Premium Ankara Dress Design",
+    vendor: "Lagos Fashion House",
+    vendorImage: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop",
+    image: "https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=400&h=300&fit=crop",
     rating: 4.9,
-    reviewCount: 128,
-    category: "Graphics Design",
-    type: "DIGITAL",
-    seller: { name: "Creative Studio", isVerified: true },
-    thumbnail: "https://images.unsplash.com/photo-1626785774625-ddcddc3445e9?w=400&h=300&fit=crop",
+    reviews: 189,
+    verified: true,
+    pricing: {
+      basic: { price: "₦15,000", delivery: "7 days", revisions: 1 },
+      standard: { price: "₦35,000", delivery: "5 days", revisions: 3 },
+      premium: { price: "₦75,000", delivery: "3 days", revisions: "Unlimited" },
+    },
   },
   {
     id: "2",
-    title: "Video Editing & Production",
-    price: 25000,
-    rating: 4.8,
-    reviewCount: 89,
-    category: "Video Editing",
-    type: "DIGITAL",
-    seller: { name: "Pixel Perfect", isVerified: true },
-    thumbnail: "https://images.unsplash.com/photo-1574717024653-61fd2cf4d44d?w=400&h=300&fit=crop",
-  },
-  {
-    id: "3",
-    title: "African Fashion Collection",
-    price: 8500,
+    title: "Professional Plumbing Services",
+    vendor: "Pro Plumber NG",
+    vendorImage: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop",
+    image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=400&h=300&fit=crop",
     rating: 4.7,
-    reviewCount: 56,
-    category: "Fashion",
-    type: "PHYSICAL",
-    seller: { name: "AfroWear NG", isVerified: true },
-    thumbnail: "https://images.unsplash.com/photo-1590735213920-68192a487bc2?w=400&h=300&fit=crop",
+    reviews: 156,
+    verified: true,
+    pricing: {
+      basic: { price: "₦5,000", delivery: "Same day", revisions: 0 },
+      standard: { price: "₦15,000", delivery: "Same day", revisions: 1 },
+      premium: { price: "₦35,000", delivery: "Same day", revisions: 3 },
+    },
   },
   {
-    id: "4",
-    title: "AI Art Generation",
-    price: 5000,
+    id: "3",
+    title: "Herbal Wellness Package",
+    vendor: "Mama Nkechi Herbs",
+    vendorImage: "https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop",
+    image: "https://images.unsplash.com/photo-1515586838455-8f8f940d6853?w=400&h=300&fit=crop",
     rating: 4.9,
-    reviewCount: 234,
-    category: "AI Art",
-    type: "DIGITAL",
-    seller: { name: "AI Studio", isVerified: false },
-    thumbnail: "https://images.unsplash.com/photo-1547826039-bfc35e0f1ea8?w=400&h=300&fit=crop",
+    reviews: 234,
+    verified: true,
+    pricing: {
+      basic: { price: "₦3,500", delivery: "2 days", revisions: 0 },
+      standard: { price: "₦8,000", delivery: "2 days", revisions: 0 },
+      premium: { price: "₦20,000", delivery: "1 day", revisions: 0 },
+    },
   },
 ];
 
-// Format currency
-function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    minimumFractionDigits: 0,
-  }).format(amount);
+// User type
+interface UserData {
+  id: string;
+  email: string;
+  name?: string;
+  image?: string;
+  role: string;
+  isVerified: boolean;
+}
+
+// Hero Slider Component
+function HeroSlider() {
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+
+  // Auto-play functionality
+  useEffect(() => {
+    if (!isAutoPlaying) return;
+    
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isAutoPlaying]);
+
+  const goToSlide = (index: number) => {
+    setCurrentSlide(index);
+    setIsAutoPlaying(false);
+    // Resume auto-play after 10 seconds of inactivity
+    setTimeout(() => setIsAutoPlaying(true), 10000);
+  };
+
+  const nextSlide = () => goToSlide((currentSlide + 1) % HERO_SLIDES.length);
+  const prevSlide = () => goToSlide((currentSlide - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+
+  return (
+    <div className="relative h-[70vh] md:h-[80vh] overflow-hidden">
+      {/* Slider Images */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentSlide}
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.7, ease: "easeInOut" }}
+          className="absolute inset-0"
+        >
+          <img
+            src={HERO_SLIDES[currentSlide].image}
+            alt={HERO_SLIDES[currentSlide].title}
+            className="w-full h-full object-cover"
+            loading={currentSlide === 0 ? "eager" : "lazy"}
+          />
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Dark Gradient Overlay */}
+      <div className="absolute inset-0 hero-gradient" />
+      
+      {/* Additional Radial Gradient for Text Focus */}
+      <div className="absolute inset-0 hero-gradient-radial" />
+
+      {/* Content Overlay */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-4 z-10">
+        {/* Main Title */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.6 }}
+          className="text-center mb-8"
+        >
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-offwhite mb-4 text-center">
+            <span className="text-gold">The Pulse</span> of African Genius
+          </h1>
+          <p className="text-lg md:text-xl text-steel max-w-2xl mx-auto text-center">
+            Services, Fashion, Wellness & Global Exports — All protected by Zee-Shield Escrow
+          </p>
+        </motion.div>
+
+        {/* Search Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
+          className="w-full max-w-3xl"
+        >
+          <div className="search-bar-gold flex rounded-xl overflow-hidden">
+            <div className="flex-1 relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold" />
+              <input
+                type="text"
+                placeholder="What service are you looking for?"
+                className="w-full pl-12 pr-4 py-4 bg-transparent text-offwhite placeholder-steel outline-none text-lg"
+              />
+            </div>
+            <button className="btn-gold px-8 py-4 text-lg font-semibold">
+              Search
+            </button>
+          </div>
+          
+          {/* Quick Search Tags */}
+          <div className="flex flex-wrap justify-center gap-2 mt-4">
+            {["Barbers near me", "Ankara styles", "Herbal medicine", "Export to UK"].map((term) => (
+              <button
+                key={term}
+                className="px-4 py-2 bg-midnight-light/60 backdrop-blur-sm border border-midnight-border rounded-full text-sm text-steel hover:text-gold hover:border-gold transition-colors"
+              >
+                {term}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Navigation Arrows */}
+      <button
+        onClick={prevSlide}
+        className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-midnight-light/80 backdrop-blur-sm rounded-full flex items-center justify-center text-offwhite hover:text-gold hover:bg-midnight-lighter transition-all z-20"
+        aria-label="Previous slide"
+      >
+        <ChevronLeft className="w-6 h-6" />
+      </button>
+      <button
+        onClick={nextSlide}
+        className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 bg-midnight-light/80 backdrop-blur-sm rounded-full flex items-center justify-center text-offwhite hover:text-gold hover:bg-midnight-lighter transition-all z-20"
+        aria-label="Next slide"
+      >
+        <ChevronRight className="w-6 h-6" />
+      </button>
+
+      {/* Dots Navigation */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+        {HERO_SLIDES.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => goToSlide(index)}
+            className={`w-3 h-3 rounded-full transition-all ${
+              index === currentSlide
+                ? "bg-gold w-8"
+                : "bg-midnight-lighter hover:bg-steel"
+            }`}
+            aria-label={`Go to slide ${index + 1}`}
+          />
+        ))}
+      </div>
+
+      {/* Slide Info */}
+      <div className="absolute bottom-20 left-1/2 -translate-x-1/2 text-center z-20">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentSlide}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <p className="text-gold font-semibold text-lg">{HERO_SLIDES[currentSlide].title}</p>
+            <p className="text-steel text-sm">{HERO_SLIDES[currentSlide].subtitle}</p>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// Pricing Tier Card Component
+function PricingTierCard({ gig }: { gig: typeof FEATURED_GIGS[0] }) {
+  const [selectedTier, setSelectedTier] = useState<"basic" | "standard" | "premium">("standard");
+
+  const tierStyles = {
+    basic: "pricing-basic",
+    standard: "pricing-standard",
+    premium: "pricing-premium",
+  };
+
+  const tierLabels = {
+    basic: "Basic",
+    standard: "Standard",
+    premium: "Premium",
+  };
+
+  return (
+    <div className="bg-midnight-light rounded-xl border border-midnight-border overflow-hidden card-hover">
+      {/* Image */}
+      <div className="relative h-48 overflow-hidden">
+        <img
+          src={gig.image}
+          alt={gig.title}
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+        {gig.verified && (
+          <div className="absolute top-3 right-3 zee-vetted">
+            <CheckCircle2 className="w-3 h-3" />
+            Zee-Vetted
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        {/* Vendor Info */}
+        <div className="flex items-center gap-2 mb-2">
+          <img
+            src={gig.vendorImage}
+            alt={gig.vendor}
+            className="w-8 h-8 rounded-full object-cover"
+          />
+          <span className="text-sm text-steel">{gig.vendor}</span>
+        </div>
+
+        {/* Title */}
+        <h3 className="font-semibold text-offwhite mb-2 line-clamp-2">{gig.title}</h3>
+
+        {/* Rating */}
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-1">
+            <Star className="w-4 h-4 text-gold fill-gold" />
+            <span className="text-gold font-medium">{gig.rating}</span>
+          </div>
+          <span className="text-steel text-sm">({gig.reviews})</span>
+        </div>
+
+        {/* Pricing Tiers */}
+        <div className="flex gap-1 mb-4">
+          {(Object.keys(gig.pricing) as Array<keyof typeof gig.pricing>).map((tier) => (
+            <button
+              key={tier}
+              onClick={() => setSelectedTier(tier)}
+              className={`flex-1 py-2 text-xs font-medium rounded-t transition-colors ${
+                selectedTier === tier
+                  ? "bg-midnight-lighter text-gold border-b-2 border-gold"
+                  : "bg-midnight text-steel hover:text-offwhite"
+              }`}
+            >
+              {tierLabels[tier]}
+            </button>
+          ))}
+        </div>
+
+        {/* Selected Tier Details */}
+        <div className={`bg-midnight rounded-lg p-3 mb-4 ${tierStyles[selectedTier]}`}>
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-gold font-bold text-lg">{gig.pricing[selectedTier].price}</span>
+          </div>
+          <div className="flex gap-4 text-xs text-steel">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3 h-3" />
+              {gig.pricing[selectedTier].delivery}
+            </span>
+            <span className="flex items-center gap-1">
+              <Sparkles className="w-3 h-3" />
+              {gig.pricing[selectedTier].revisions} revisions
+            </span>
+          </div>
+        </div>
+
+        {/* CTA Button */}
+        <button className="w-full btn-gold py-3 rounded-lg font-semibold">
+          Continue
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function HomePage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [showAuthDialog, setShowAuthDialog] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("home");
+  const { setUser: setAuthUser, logout: authLogout } = useAuthStore();
+
+  // Auth form state
+  const [authTab, setAuthTab] = useState<"signin" | "join">("signin");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+
+  const isLoggedIn = !!user;
 
   // Check if user is logged in
   useEffect(() => {
@@ -224,622 +467,805 @@ export default function HomePage() {
       .then((res) => res.json())
       .then((data) => {
         if (data?.user) {
-          setIsLoggedIn(true);
+          setUser(data.user);
+          // Sync with auth store for dashboard
+          setAuthUser({
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.name,
+            role: data.user.role,
+            isVerified: data.user.isVerified,
+          });
         }
+        setIsLoading(false);
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        setIsLoading(false);
+      });
+  }, [setAuthUser]);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Zap className="w-5 h-5 text-primary-foreground" />
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+
+    try {
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setAuthError("Invalid email or password. Please try again.");
+      } else {
+        const sessionRes = await fetch("/api/auth/session");
+        const sessionData = await sessionRes.json();
+        if (sessionData?.user) {
+          setUser(sessionData.user);
+          // Sync with auth store for dashboard
+          setAuthUser({
+            id: sessionData.user.id,
+            email: sessionData.user.email,
+            name: sessionData.user.name,
+            role: sessionData.user.role,
+            isVerified: sessionData.user.isVerified,
+          });
+        }
+      }
+    } catch (err) {
+      setAuthError("An error occurred. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle signup
+  const handleSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+
+    if (password.length < 8) {
+      setAuthError("Password must be at least 8 characters long.");
+      setAuthLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setAuthError(data.error || "Failed to create account.");
+      } else {
+        const result = await signIn("credentials", {
+          email,
+          password,
+          redirect: false,
+        });
+
+        if (result?.ok) {
+          const sessionRes = await fetch("/api/auth/session");
+          const sessionData = await sessionRes.json();
+          if (sessionData?.user) {
+            setUser(sessionData.user);
+            // Sync with auth store for dashboard
+            setAuthUser({
+              id: sessionData.user.id,
+              email: sessionData.user.email,
+              name: sessionData.user.name,
+              role: sessionData.user.role,
+              isVerified: sessionData.user.isVerified,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      setAuthError("An error occurred. Please try again.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Handle logout
+  const handleLogout = async () => {
+    await signOut({ redirect: false });
+    setUser(null);
+    authLogout(); // Clear auth store
+    window.location.reload();
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-midnight">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 border-4 border-gold border-t-transparent rounded-full animate-spin" />
+          <p className="text-steel">Loading ZeeFix Hub...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // AUTH VIEW - Midnight Blue & Gold Theme
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex bg-midnight">
+        {/* Left Side - Branding */}
+        <div className="hidden lg:flex lg:w-1/2 bg-midnight-light relative overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0">
+            <div className="absolute top-20 right-20 w-72 h-72 bg-gold/5 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 left-20 w-96 h-96 bg-gold/10 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-midnight-lighter/50 rounded-full blur-3xl" />
+          </div>
+          
+          <div className="relative z-10 flex flex-col justify-between p-12 text-offwhite">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <Image 
+                src="/zee-logo.png" 
+                alt="ZeeFix Hub Logo" 
+                width={64} 
+                height={64}
+                className="rounded-xl gold-glow-sm"
+              />
+              <div>
+                <span className="font-bold text-2xl text-gold">ZeeFix Hub</span>
+                <p className="text-xs text-steel">by Zee&apos;s Digital Empire</p>
+              </div>
             </div>
-            <span className="font-bold text-xl">Zee</span>
+
+            {/* Hero Text */}
+            <div className="space-y-6">
+              <h1 className="text-4xl font-bold leading-tight">
+                <span className="text-gold">The Pulse</span> of<br />African Genius
+              </h1>
+              <p className="text-lg text-steel max-w-md">
+                Nigeria&apos;s Premier Multi-Vendor Marketplace — Services, Fashion, Wellness & Global Exports
+              </p>
+              
+              {/* Features Grid */}
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                {[
+                  { icon: Shield, label: "Zee-Shield Escrow", color: "text-gold" },
+                  { icon: Truck, label: "Fast Delivery", color: "text-teal" },
+                  { icon: Award, label: "Verified Vendors", color: "text-gold" },
+                  { icon: Globe, label: "Global Exports", color: "text-teal" },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <item.icon className={`w-5 h-5 ${item.color}`} />
+                    <span className="text-sm">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center gap-4">
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="w-10 h-10 rounded-full bg-midnight-lighter border-2 border-midnight" />
+                ))}
+              </div>
+              <p className="text-sm text-steel">
+                Join <span className="font-semibold text-gold">50,000+</span> trusted vendors
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side - Auth Form */}
+        <div className="flex-1 flex items-center justify-center p-6 bg-midnight">
+          <div className="w-full max-w-md space-y-8">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+              <Image 
+                src="/zee-logo.png" 
+                alt="ZeeFix Hub Logo" 
+                width={52} 
+                height={52}
+                className="rounded-xl"
+              />
+              <div>
+                <span className="font-bold text-xl text-gold">ZeeFix Hub</span>
+                <p className="text-xs text-steel">by Zee&apos;s Digital Empire</p>
+              </div>
+            </div>
+
+            <div className="bg-midnight-light p-8 rounded-2xl border border-midnight-border">
+              {/* Tabs */}
+              <div className="flex border-b border-midnight-border mb-6">
+                <button
+                  onClick={() => setAuthTab("signin")}
+                  className={`flex-1 pb-3 font-semibold transition-colors ${
+                    authTab === "signin"
+                      ? "text-gold border-b-2 border-gold"
+                      : "text-steel"
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setAuthTab("join")}
+                  className={`flex-1 pb-3 font-semibold transition-colors ${
+                    authTab === "join"
+                      ? "text-gold border-b-2 border-gold"
+                      : "text-steel"
+                  }`}
+                >
+                  Become a Vendor
+                </button>
+              </div>
+
+              {/* Error */}
+              {authError && (
+                <div className="bg-coral/10 border border-coral/30 text-coral px-4 py-3 rounded-lg text-sm mb-4">
+                  {authError}
+                </div>
+              )}
+
+              {/* Sign In Form */}
+              {authTab === "signin" && (
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-offwhite">Email</Label>
+                    <div className="relative mt-1">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-steel" />
+                      <Input
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10 h-11 bg-midnight border-midnight-border text-offwhite placeholder-steel focus:border-gold focus:ring-gold"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-offwhite">Password</Label>
+                    <div className="relative mt-1">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-steel" />
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10 pr-10 h-11 bg-midnight border-midnight-border text-offwhite placeholder-steel focus:border-gold focus:ring-gold"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-steel hover:text-gold"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-11 btn-gold font-semibold"
+                    disabled={authLoading}
+                  >
+                    {authLoading ? (
+                      <>
+                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        Signing in...
+                      </>
+                    ) : (
+                      "Continue"
+                    )}
+                  </Button>
+                </form>
+              )}
+
+              {/* Join Form */}
+              {authTab === "join" && (
+                <form onSubmit={handleSignup} className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium text-offwhite">Full Name</Label>
+                    <div className="relative mt-1">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-steel" />
+                      <Input
+                        type="text"
+                        placeholder="Enter your name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="pl-10 h-11 bg-midnight border-midnight-border text-offwhite placeholder-steel focus:border-gold focus:ring-gold"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-offwhite">Email</Label>
+                    <div className="relative mt-1">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-steel" />
+                      <Input
+                        type="email"
+                        placeholder="Enter your email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-10 h-11 bg-midnight border-midnight-border text-offwhite placeholder-steel focus:border-gold focus:ring-gold"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium text-offwhite">Password</Label>
+                    <div className="relative mt-1">
+                      <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-steel" />
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Choose a password (min 8 chars)"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="pl-10 pr-10 h-11 bg-midnight border-midnight-border text-offwhite placeholder-steel focus:border-gold focus:ring-gold"
+                        required
+                        minLength={8}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-steel hover:text-gold"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <Button
+                    type="submit"
+                    className="w-full h-11 btn-gold font-semibold"
+                    disabled={authLoading}
+                  >
+                    {authLoading ? (
+                      <>
+                        <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                        Creating account...
+                      </>
+                    ) : (
+                      "Start Selling"
+                    )}
+                  </Button>
+                </form>
+              )}
+
+              <p className="text-center text-xs text-steel mt-6">
+                By joining, you agree to ZeeFix Hub&apos;s{" "}
+                <Link href="/terms" className="text-gold hover:underline">Terms of Service</Link> and{" "}
+                <Link href="/privacy" className="text-gold hover:underline">Privacy Policy</Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // APP VIEW - Main Application with Midnight Blue & Gold Theme
+  return (
+    <div className="min-h-screen flex flex-col bg-midnight pb-20 lg:pb-0">
+      {/* Top Header - Desktop */}
+      <header className="hidden lg:flex sticky top-0 z-50 w-full border-b border-midnight-border bg-midnight/95 backdrop-blur">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-3 shrink-0">
+            <Image 
+              src="/zee-logo.png" 
+              alt="ZeeFix Hub Logo" 
+              width={48} 
+              height={48}
+              className="rounded-lg gold-glow-sm"
+            />
+            <div>
+              <span className="font-bold text-lg text-gold">ZeeFix Hub</span>
+              <p className="text-[10px] text-steel -mt-1">by Zee&apos;s Digital Empire</p>
+            </div>
           </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
-            <Link href="/?marketplace=zeegig" className="text-sm font-medium hover:text-primary transition-colors">
-              ZeeGig
-            </Link>
-            <Link href="/?marketplace=zeefix" className="text-sm font-medium hover:text-primary transition-colors">
-              ZeeFix Hub
-            </Link>
-            <Link href="/dashboard/seller" className="text-sm font-medium hover:text-primary transition-colors">
-              Sell
-            </Link>
-          </nav>
-
-          {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
+          {/* Search Bar */}
+          <div className="flex-1 max-w-xl">
             <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-steel" />
               <Input
-                placeholder="Search services, products..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4"
+                placeholder="Search services, products, vendors..."
+                className="pl-11 pr-4 h-10 rounded-full bg-midnight-light border-midnight-border text-offwhite placeholder-steel focus:border-gold focus:ring-gold"
               />
             </div>
           </div>
 
-          {/* Right Side Actions */}
-          <div className="flex items-center gap-2">
-            {isLoggedIn ? (
-              <>
-                <Button variant="ghost" size="icon" className="hidden md:flex">
-                  <Bell className="w-5 h-5" />
-                </Button>
-                <Button variant="ghost" size="icon" className="hidden md:flex">
-                  <ShoppingCart className="w-5 h-5" />
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <User className="w-5 h-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard">Dashboard</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/orders">My Orders</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/wallet">Wallet</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/seller">Seller Dashboard</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/api/auth/signout">Sign Out</Link>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            ) : (
-              <div className="hidden md:flex items-center gap-2">
-                <Button variant="ghost" onClick={() => { setAuthMode("login"); setShowAuthDialog(true); }}>
-                  Sign In
-                </Button>
-                <Button onClick={() => { setAuthMode("signup"); setShowAuthDialog(true); }}>
-                  Get Started
-                </Button>
-              </div>
-            )}
-
-            {/* Mobile Menu */}
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="w-5 h-5" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-80">
-                <SheetHeader>
-                  <SheetTitle>Menu</SheetTitle>
-                </SheetHeader>
-                <div className="mt-6 flex flex-col gap-4">
-                  {/* Mobile Search */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                  
-                  <nav className="flex flex-col gap-2">
-                    <Link
-                      href="/?marketplace=zeegig"
-                      className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <Zap className="w-5 h-5 text-primary" />
-                      <span className="font-medium">ZeeGig - Digital Services</span>
-                    </Link>
-                    <Link
-                      href="/?marketplace=zeefix"
-                      className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <ShoppingBag className="w-5 h-5 text-accent" />
-                      <span className="font-medium">ZeeFix Hub - Goods & Services</span>
-                    </Link>
-                    <Link
-                      href="/dashboard/seller"
-                      className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <Store className="w-5 h-5" />
-                      <span className="font-medium">Start Selling</span>
-                    </Link>
-                  </nav>
-
-                  {!isLoggedIn && (
-                    <div className="flex flex-col gap-2 mt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setAuthMode("login");
-                          setShowAuthDialog(true);
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        Sign In
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setAuthMode("signup");
-                          setShowAuthDialog(true);
-                          setIsMobileMenuOpen(false);
-                        }}
-                      >
-                        Get Started
-                      </Button>
+          {/* Navigation */}
+          <nav className="flex items-center gap-6">
+            <Link href="/" className="text-sm font-medium text-gold">Home</Link>
+            <Link href="/explore" className="text-sm font-medium text-steel hover:text-gold">Explore Hub</Link>
+            <Link href="/dashboard/seller" className="text-sm font-medium text-steel hover:text-gold">My Activity</Link>
+            
+            {/* Notifications */}
+            <button className="p-2 text-steel hover:text-gold relative">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-gold rounded-full"></span>
+            </button>
+            
+            {/* User Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 p-1.5 rounded-full hover:bg-midnight-light transition-colors">
+                  {user?.image ? (
+                    <img src={user.image} alt={user.name || "User"} className="w-8 h-8 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-gold text-midnight flex items-center justify-center font-medium text-sm">
+                      {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                    </div>
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 p-2 bg-midnight-light border-midnight-border">
+                <div className="px-2 py-3 border-b border-midnight-border mb-2">
+                  <p className="font-medium text-offwhite text-sm">{user?.name || "User"}</p>
+                  <p className="text-xs text-steel">{user?.email}</p>
+                  {user?.isVerified && (
+                    <div className="flex items-center gap-1 mt-1 text-xs text-gold">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Verified
                     </div>
                   )}
                 </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+                <DropdownMenuItem asChild className="cursor-pointer py-2 text-offwhite hover:text-gold focus:text-gold">
+                  <Link href="/dashboard/seller" className="flex items-center gap-3">
+                    <LayoutDashboard className="w-4 h-4 text-steel" />
+                    <span>Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer py-2 text-offwhite hover:text-gold focus:text-gold">
+                  <Link href="/dashboard/seller/wallet" className="flex items-center gap-3">
+                    <Wallet className="w-4 h-4 text-steel" />
+                    <span>Wallet</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild className="cursor-pointer py-2 text-offwhite hover:text-gold focus:text-gold">
+                  <Link href="/dashboard/settings" className="flex items-center gap-3">
+                    <Settings className="w-4 h-4 text-steel" />
+                    <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-midnight-border" />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer py-2 text-coral focus:text-coral">
+                  <LogOut className="w-4 h-4 mr-3" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </nav>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="flex-1">
-        {/* Hero Carousel */}
-        <section className="w-full py-6 px-4">
-          <div className="container mx-auto">
-            <Carousel
-              opts={{
-                align: "start",
-                loop: true,
-              }}
-              className="w-full"
-            >
-              <CarouselContent>
-                {heroAds.map((ad) => (
-                  <CarouselItem key={ad.id}>
-                    <div className="relative h-48 md:h-72 lg:h-80 rounded-2xl overflow-hidden">
-                      <img
-                        src={ad.imageUrl}
-                        alt={ad.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-transparent" />
-                      <div className="absolute inset-0 flex flex-col justify-center p-6 md:p-10">
-                        <h2 className="text-2xl md:text-4xl font-bold text-white mb-2">
-                          {ad.title}
-                        </h2>
-                        <p className="text-white/90 text-sm md:text-lg mb-4 max-w-md">
-                          {ad.description}
-                        </p>
-                        <Button className="w-fit bg-primary hover:bg-primary/90">
-                          Learn More <ArrowRight className="ml-2 w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CarouselItem>
-                ))}
-              </CarouselContent>
-              <CarouselPrevious className="left-4" />
-              <CarouselNext className="right-4" />
-            </Carousel>
-          </div>
-        </section>
+        {/* Hero Slider */}
+        <HeroSlider />
 
-        {/* Marketplace Navigation */}
-        <section className="py-8 px-4">
+        {/* Category Navigation */}
+        <section className="py-6 px-4 border-b border-midnight-border bg-midnight-light/50">
           <div className="container mx-auto">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* ZeeGig Card */}
-              <Link href="/?marketplace=zeegig" className="group">
-                <Card className="h-full border-2 border-primary/20 hover:border-primary hover:shadow-lg transition-all duration-300 overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="relative h-40 bg-gradient-to-br from-primary/10 to-primary/5">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Zap className="w-20 h-20 text-primary opacity-20" />
-                      </div>
-                      <div className="absolute bottom-4 left-6">
-                        <Badge className="bg-primary text-primary-foreground">Digital Services</Badge>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-2xl font-bold mb-2 group-hover:text-primary transition-colors">
-                        ZeeGig
-                      </h3>
-                      <p className="text-muted-foreground mb-4">
-                        Find professional digital services - AI Art, Video Editing, Graphics Design, Programming, and more.
-                      </p>
-                      <div className="flex items-center text-primary font-medium">
-                        Explore Services <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-
-              {/* ZeeFix Hub Card */}
-              <Link href="/?marketplace=zeefix" className="group">
-                <Card className="h-full border-2 border-accent/20 hover:border-accent hover:shadow-lg transition-all duration-300 overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="relative h-40 bg-gradient-to-br from-accent/10 to-accent/5">
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <ShoppingBag className="w-20 h-20 text-accent opacity-20" />
-                      </div>
-                      <div className="absolute bottom-4 left-6">
-                        <Badge className="bg-accent text-accent-foreground">Goods & Services</Badge>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-2xl font-bold mb-2 group-hover:text-accent transition-colors">
-                        ZeeFix Hub
-                      </h3>
-                      <p className="text-muted-foreground mb-4">
-                        Shop physical goods and find local services - Fashion, Herbs, Food, Barbers, Errand Runners, and more.
-                      </p>
-                      <div className="flex items-center text-accent font-medium">
-                        Shop Now <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+            <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-hide">
+              {[
+                { id: "services", label: "Local Services", icon: Wrench, color: "text-gold" },
+                { id: "fashion", label: "Fashion & Fabrics", icon: Shirt, color: "text-teal" },
+                { id: "wellness", label: "Wellness & Herbs", icon: Leaf, color: "text-gold" },
+                { id: "exports", label: "Global Exports", icon: Plane, color: "text-teal" },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveTab(cat.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-colors ${
+                    activeTab === cat.id
+                      ? "bg-gold text-midnight font-semibold"
+                      : "bg-midnight-light border border-midnight-border text-steel hover:text-gold hover:border-gold"
+                  }`}
+                >
+                  <cat.icon className="w-4 h-4" />
+                  <span className="text-sm">{cat.label}</span>
+                </button>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Featured Services */}
-        <section className="py-8 px-4 bg-muted/30">
+        {/* Local Services Section */}
+        <section className="py-12 px-4 bg-midnight">
           <div className="container mx-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Featured Services</h2>
-              <Link href="/?marketplace=zeegig" className="text-primary hover:underline text-sm font-medium">
-                View All <ArrowRight className="inline w-4 h-4 ml-1" />
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-offwhite mb-1">Local Services</h2>
+                <p className="text-steel">Book trusted professionals near you</p>
+              </div>
+              <Link href="/services" className="text-sm font-medium text-gold hover:underline flex items-center gap-1">
+                View all <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {featuredListings.map((listing) => (
+            
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+              {LOCAL_SERVICES.map((service) => (
                 <Link
-                  key={listing.id}
-                  href={`/listing/${listing.id}`}
+                  key={service.id}
+                  href={`/services/${service.id}`}
                   className="group"
                 >
-                  <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-                    <div className="aspect-[4/3] relative overflow-hidden bg-muted">
-                      <img
-                        src={listing.thumbnail}
-                        alt={listing.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                      <Badge
-                        variant={listing.type === "DIGITAL" ? "default" : "secondary"}
-                        className="absolute top-2 left-2"
-                      >
-                        {listing.type === "DIGITAL" ? "Digital" : "Physical"}
-                      </Badge>
+                  <div className="bg-midnight-light rounded-xl border border-midnight-border p-4 text-center card-hover">
+                    <div className={`w-12 h-12 ${service.color} rounded-xl flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
+                      <service.icon className="w-6 h-6 text-midnight" />
                     </div>
-                    <CardContent className="p-3">
-                      <h4 className="font-medium text-sm line-clamp-1">{listing.title}</h4>
-                      <p className="text-xs text-muted-foreground mt-1">{listing.category}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <span className="font-bold text-primary">{formatCurrency(listing.price)}</span>
-                        <div className="flex items-center gap-1">
-                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                          <span className="text-xs">{listing.rating}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    <p className="text-sm font-medium text-offwhite mb-1">{service.label}</p>
+                    <p className="text-xs text-gold">{service.count}</p>
+                  </div>
                 </Link>
               ))}
             </div>
           </div>
         </section>
 
-        {/* ZeeGig Categories */}
-        <section className="py-8 px-4">
+        {/* Featured Gigs with Pricing Tiers */}
+        <section className="py-12 px-4 bg-midnight-light/30">
           <div className="container mx-auto">
-            <h2 className="text-2xl font-bold mb-6">
-              <Zap className="inline w-6 h-6 mr-2 text-primary" />
-              ZeeGig Categories
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {ZEEGIG_CATEGORIES.map((category) => {
-                const Icon = iconMap[category.icon] || Sparkles;
-                return (
-                  <Link
-                    key={category.id}
-                    href={`/?marketplace=zeegig&category=${category.id}`}
-                    className="group"
-                  >
-                    <Card className="hover:border-primary hover:shadow-md transition-all">
-                      <CardContent className="p-4 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                          <Icon className="w-5 h-5 text-primary" />
-                        </div>
-                        <span className="font-medium text-sm">{category.label}</span>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                );
-              })}
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-offwhite mb-1">Featured Services</h2>
+                <p className="text-steel">Hand-picked vendors with 3-tier pricing</p>
+              </div>
+              <Link href="/gigs" className="text-sm font-medium text-gold hover:underline flex items-center gap-1">
+                View all <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
-          </div>
-        </section>
-
-        {/* ZeeFix Hub Categories */}
-        <section className="py-8 px-4 bg-muted/30">
-          <div className="container mx-auto">
-            <h2 className="text-2xl font-bold mb-6">
-              <ShoppingBag className="inline w-6 h-6 mr-2 text-accent" />
-              ZeeFix Hub Categories
-            </h2>
             
-            <Tabs defaultValue="physical" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="physical">Physical Goods</TabsTrigger>
-                <TabsTrigger value="service">Local Services</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="physical">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {ZEEFIX_CATEGORIES.physical.map((category) => {
-                    const Icon = iconMap[category.icon] || ShoppingBag;
-                    return (
-                      <Link
-                        key={category.id}
-                        href={`/?marketplace=zeefix&type=physical&category=${category.id}`}
-                        className="group"
-                      >
-                        <Card className="hover:border-accent hover:shadow-md transition-all">
-                          <CardContent className="p-4 flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                              <Icon className="w-5 h-5 text-accent" />
-                            </div>
-                            <span className="font-medium text-sm">{category.label}</span>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="service">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {ZEEFIX_CATEGORIES.service.map((category) => {
-                    const Icon = iconMap[category.icon] || Scissors;
-                    return (
-                      <Link
-                        key={category.id}
-                        href={`/?marketplace=zeefix&type=service&category=${category.id}`}
-                        className="group"
-                      >
-                        <Card className="hover:border-accent hover:shadow-md transition-all">
-                          <CardContent className="p-4 flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                              <Icon className="w-5 h-5 text-accent" />
-                            </div>
-                            <span className="font-medium text-sm">{category.label}</span>
-                          </CardContent>
-                        </Card>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </section>
-
-        {/* Why Choose Zee Ecosystem */}
-        <section className="py-12 px-4">
-          <div className="container mx-auto">
-            <h2 className="text-2xl font-bold text-center mb-8">Why Choose Zee Ecosystem?</h2>
-            <div className="grid md:grid-cols-4 gap-6">
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <Shield className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="font-bold mb-2">Zee-Shield Escrow</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Secure payments with our escrow system. Funds are only released when you confirm delivery.
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <MessageCircle className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="font-bold mb-2">Real-Time Chat</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Communicate directly with sellers and buyers. Get instant updates on your orders.
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <Wallet className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="font-bold mb-2">Unified Wallet</h3>
-                  <p className="text-sm text-muted-foreground">
-                    One wallet for both marketplaces. Deposit, withdraw, and manage your funds easily.
-                  </p>
-                </CardContent>
-              </Card>
-              
-              <Card>
-                <CardContent className="p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                    <Users className="w-6 h-6 text-primary" />
-                  </div>
-                  <h3 className="font-bold mb-2">Verified Sellers</h3>
-                  <p className="text-sm text-muted-foreground">
-                    All sellers go through a verification process. Look for the verified badge.
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {FEATURED_GIGS.map((gig) => (
+                <PricingTierCard key={gig.id} gig={gig} />
+              ))}
             </div>
           </div>
         </section>
 
-        {/* CTA Section */}
-        <section className="py-12 px-4 bg-primary text-primary-foreground">
-          <div className="container mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-4">Ready to Start Selling?</h2>
-            <p className="text-lg opacity-90 mb-6 max-w-2xl mx-auto">
-              Join thousands of sellers on Zee Ecosystem. Create your store, list your services or products, and start earning today.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" variant="secondary" asChild>
-                <Link href="/dashboard/seller">
-                  <Store className="w-5 h-5 mr-2" />
-                  Create Your Store
+        {/* Fashion & Fabrics Section */}
+        <section className="py-12 px-4 bg-midnight">
+          <div className="container mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-offwhite mb-1">Fashion & Fabrics</h2>
+                <p className="text-steel">Ankara, Aso Oke, Ready-to-Wear & Bespoke</p>
+              </div>
+              <Link href="/fashion" className="text-sm font-medium text-gold hover:underline flex items-center gap-1">
+                View all <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {FASHION_CATEGORIES.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/fashion/${category.id}`}
+                  className="group relative overflow-hidden rounded-xl aspect-square"
+                >
+                  <img
+                    src={category.image}
+                    alt={category.label}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-midnight via-midnight/50 to-transparent" />
+                  <div className="absolute bottom-3 left-3 right-3">
+                    <p className="text-offwhite font-semibold">{category.label}</p>
+                    <p className="text-gold text-xs">{category.count} items</p>
+                    <p className="text-steel text-xs mt-1">{category.priceRange}</p>
+                  </div>
                 </Link>
+              ))}
+            </div>
+            
+            {/* Home Measurement CTA */}
+            <div className="mt-6 bg-midnight-light border border-midnight-border rounded-xl p-4 flex items-center justify-between card-hover">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gold rounded-lg flex items-center justify-center gold-glow-sm">
+                  <Users className="w-5 h-5 text-midnight" />
+                </div>
+                <div>
+                  <p className="font-semibold text-offwhite">Request Home Measurement</p>
+                  <p className="text-sm text-steel">For bespoke tailoring at your location</p>
+                </div>
+              </div>
+              <Button className="btn-gold">
+                Book Now
               </Button>
-              <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground/10">
-                Learn More
-              </Button>
+            </div>
+          </div>
+        </section>
+
+        {/* Wellness & Herbs Section */}
+        <section className="py-12 px-4 bg-midnight-light/30">
+          <div className="container mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-offwhite mb-1">Wellness & Cosmetics</h2>
+                <p className="text-steel">Vetted herbs, creams & organic products</p>
+              </div>
+              <Link href="/wellness" className="text-sm font-medium text-gold hover:underline flex items-center gap-1">
+                View all <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {WELLNESS_CATEGORIES.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/wellness/${category.id}`}
+                  className="group relative overflow-hidden rounded-xl aspect-square"
+                >
+                  <img
+                    src={category.image}
+                    alt={category.label}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-midnight via-midnight/50 to-transparent" />
+                  <div className="absolute top-2 right-2">
+                    {category.verified && (
+                      <div className="zee-vetted">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Vetted
+                      </div>
+                    )}
+                  </div>
+                  <div className="absolute bottom-3 left-3">
+                    <p className="text-offwhite font-semibold">{category.label}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Global Exports Section */}
+        <section className="py-12 px-4 bg-midnight">
+          <div className="container mx-auto">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-offwhite mb-1">Global Food & Export</h2>
+                <p className="text-steel">Ship to diaspora worldwide</p>
+              </div>
+              <Link href="/exports" className="text-sm font-medium text-gold hover:underline flex items-center gap-1">
+                View all <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="bg-midnight-light rounded-xl border border-midnight-border p-6 card-hover">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-gold/20 rounded-xl flex items-center justify-center">
+                    <Package className="w-6 h-6 text-gold" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-offwhite">Raw Food Stuffs</h3>
+                    <p className="text-sm text-steel mb-3">Export Nigerian food items worldwide</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Garri", "Palm Oil", "Ogbono", "Crayfish"].map((item) => (
+                        <span key={item} className="text-xs bg-midnight border border-midnight-border px-2 py-1 rounded-full text-steel">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-midnight-light rounded-xl border border-midnight-border p-6 card-hover">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 bg-teal/20 rounded-xl flex items-center justify-center">
+                    <ChefHat className="w-6 h-6 text-teal" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-offwhite">Catering Services</h3>
+                    <p className="text-sm text-steel mb-3">Professional catering for events</p>
+                    <div className="flex flex-wrap gap-2">
+                      {["Weddings", "Parties", "Corporate", "Private"].map((item) => (
+                        <span key={item} className="text-xs bg-midnight border border-midnight-border px-2 py-1 rounded-full text-steel">{item}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            {/* Export to Diaspora CTA */}
+            <div className="mt-6 bg-gradient-to-r from-gold/20 to-teal/20 border border-gold/30 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-lg text-offwhite">Export to Diaspora</h3>
+                  <p className="text-steel text-sm">Get automated international shipping quotes via DHL/GIGL</p>
+                </div>
+                <Button className="btn-gold">
+                  <Plane className="w-4 h-4 mr-2" />
+                  Get Quote
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Zee-Shield Trust Section */}
+        <section className="py-16 px-4 bg-midnight-light/50">
+          <div className="container mx-auto text-center">
+            <div className="w-16 h-16 bg-gold rounded-2xl flex items-center justify-center mx-auto mb-4 gold-glow animate-glow-pulse">
+              <Shield className="w-8 h-8 text-midnight" />
+            </div>
+            <h2 className="text-2xl font-bold text-offwhite mb-2">Protected by Zee-Shield</h2>
+            <p className="text-steel mb-8 max-w-2xl mx-auto">
+              Your payments are held in secure escrow until you confirm delivery. Shop with confidence.
+            </p>
+            
+            <div className="grid md:grid-cols-4 gap-6">
+              {[
+                { icon: Shield, title: "Secure Escrow", desc: "Funds released on confirmation", color: "text-gold" },
+                { icon: Clock, title: "24/7 Support", desc: "Always here to help", color: "text-teal" },
+                { icon: Award, title: "Verified Vendors", desc: "Background-checked sellers", color: "text-gold" },
+                { icon: MessageCircle, title: "Dispute Resolution", desc: "Fair conflict handling", color: "text-teal" },
+              ].map((item, i) => (
+                <div key={i} className="bg-midnight rounded-xl border border-midnight-border p-6 card-hover">
+                  <item.icon className={`w-8 h-8 ${item.color} mx-auto mb-3`} />
+                  <h3 className="font-semibold text-offwhite mb-1">{item.title}</h3>
+                  <p className="text-sm text-steel">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t bg-card">
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <span className="font-bold text-xl">Zee Ecosystem</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Your unified marketplace for digital services, physical goods, and local services.
-              </p>
+      <footer className="hidden lg:block border-t border-midnight-border bg-midnight py-8">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Image 
+                src="/zee-logo.png" 
+                alt="ZeeFix Hub Logo" 
+                width={44} 
+                height={44}
+                className="rounded-lg"
+              />
+              <span className="font-bold text-gold">ZeeFix Hub</span>
             </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Marketplaces</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/?marketplace=zeegig" className="hover:text-primary">ZeeGig - Digital Services</Link></li>
-                <li><Link href="/?marketplace=zeefix" className="hover:text-primary">ZeeFix Hub - Goods & Services</Link></li>
-                <li><Link href="/dashboard/seller" className="hover:text-primary">Become a Seller</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Support</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-primary">Help Center</Link></li>
-                <li><Link href="#" className="hover:text-primary">Contact Us</Link></li>
-                <li><Link href="#" className="hover:text-primary">Report an Issue</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-primary">Terms of Service</Link></li>
-                <li><Link href="#" className="hover:text-primary">Privacy Policy</Link></li>
-                <li><Link href="#" className="hover:text-primary">Escrow Policy</Link></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Zee Ecosystem. All rights reserved.</p>
+            <p className="text-sm text-steel">
+              © 2024 Zee&apos;s Digital Empire. All rights reserved.
+            </p>
           </div>
         </div>
       </footer>
 
-      {/* Auth Dialog */}
-      <Dialog open={showAuthDialog} onOpenChange={setShowAuthDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {authMode === "login" ? "Welcome Back" : "Create Account"}
-            </DialogTitle>
-            <DialogDescription>
-              {authMode === "login"
-                ? "Sign in to access your dashboard and orders."
-                : "Join Zee Ecosystem and start buying or selling today."}
-            </DialogDescription>
-          </DialogHeader>
-          
-          <Tabs defaultValue={authMode} onValueChange={(v) => setAuthMode(v as "login" | "signup")}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="login" className="mt-4">
-              <form className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input id="login-email" type="email" placeholder="your@email.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <Input id="login-password" type="password" />
-                </div>
-                <Button type="submit" className="w-full">Sign In</Button>
-              </form>
-            </TabsContent>
-            
-            <TabsContent value="signup" className="mt-4">
-              <form className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
-                  <Input id="signup-name" type="text" placeholder="John Doe" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input id="signup-email" type="email" placeholder="your@email.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input id="signup-password" type="password" />
-                </div>
-                <div className="space-y-2">
-                  <Label>I want to</Label>
-                  <div className="flex gap-4">
-                    <label className="flex items-center gap-2">
-                      <input type="radio" name="role" value="BUYER" defaultChecked className="text-primary" />
-                      <span className="text-sm">Buy Services</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="radio" name="role" value="SELLER" className="text-primary" />
-                      <span className="text-sm">Sell Services</span>
-                    </label>
-                  </div>
-                </div>
-                <Button type="submit" className="w-full">Create Account</Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-midnight-light border-t border-midnight-border z-50">
+        <div className="flex justify-around py-2">
+          {[
+            { icon: Home, label: "Home", active: true },
+            { icon: Search, label: "Explore", active: false },
+            { icon: ShoppingBag, label: "Activity", active: false },
+            { icon: User, label: "Profile", active: false },
+          ].map((item, i) => (
+            <button
+              key={i}
+              className={`flex flex-col items-center py-2 px-4 ${
+                item.active ? "text-gold" : "text-steel"
+              }`}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="text-xs mt-1">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

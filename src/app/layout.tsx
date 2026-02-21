@@ -10,22 +10,22 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Zee Ecosystem - Your Unified Marketplace",
-  description: "Zee Ecosystem brings together ZeeGig (Digital Services) and ZeeFix Hub (Physical Goods & Local Services) into one powerful platform with built-in Escrow payments and real-time chat.",
-  keywords: ["Zee Ecosystem", "ZeeGig", "ZeeFix Hub", "Marketplace", "Digital Services", "Local Services", "Escrow", "Nigeria"],
-  authors: [{ name: "Zee Ecosystem Team" }],
+  title: "ZeeFix Hub - Nigeria's Premier Multi-Vendor Marketplace",
+  description: "ZeeFix Hub by Zee's Digital Empire - Services, Fashion, Wellness & Global Exports. Trusted platform with Zee-Shield Escrow protection.",
+  keywords: ["ZeeFix Hub", "Zee's Digital Empire", "Marketplace", "Nigeria", "Local Services", "Fashion", "Herbs", "Exports", "Escrow"],
+  authors: [{ name: "Zee's Digital Empire Limited - CEO: Idowu Akinwale" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "Zee Ecosystem - Your Unified Marketplace",
-    description: "Digital services, physical goods, and local services in one place",
+    title: "ZeeFix Hub - Nigeria's Premier Multi-Vendor Marketplace",
+    description: "Services, Fashion, Wellness & Global Exports - All protected by Zee-Shield Escrow",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Zee Ecosystem",
-    description: "Your Unified Marketplace for Digital & Physical Services",
+    title: "ZeeFix Hub",
+    description: "Nigeria's Premier Multi-Vendor Marketplace",
   },
 };
 

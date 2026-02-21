@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Package,
@@ -19,6 +19,11 @@ import {
   Store,
   Plus,
   HelpCircle,
+  RefreshCw,
+  ShoppingBasket,
+  Home,
+  Search,
+  Heart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -35,7 +40,35 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore } from "@/stores/app-store";
 
-const sidebarLinks = [
+const buyerLinks = [
+  {
+    title: "Home",
+    href: "/dashboard/buyer",
+    icon: Home,
+  },
+  {
+    title: "Categories",
+    href: "/dashboard/buyer?tab=explore",
+    icon: Search,
+  },
+  {
+    title: "My Orders",
+    href: "/dashboard/buyer?tab=orders",
+    icon: Package,
+  },
+  {
+    title: "Favorites",
+    href: "/dashboard/buyer?tab=favorites",
+    icon: Heart,
+  },
+  {
+    title: "Wallet",
+    href: "/dashboard/buyer?tab=wallet",
+    icon: Wallet,
+  },
+];
+
+const sellerLinks = [
   {
     title: "Dashboard",
     href: "/dashboard/seller",
@@ -79,13 +112,40 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
   const { user, logout } = useAuthStore();
 
+  // Derive role from pathname
+  const userRole: "BUYER" | "SELLER" = pathname.includes("/buyer") ? "BUYER" : "SELLER";
+  const sidebarLinks = userRole === "BUYER" ? buyerLinks : sellerLinks;
+
   const isActiveLink = (href: string) => {
-    if (href === "/dashboard/seller") {
+    if (href === "/dashboard/seller" || href === "/dashboard/buyer") {
       return pathname === href;
     }
     return pathname.startsWith(href);
+  };
+
+  const handleSwitchMode = async () => {
+    try {
+      const newRole = userRole === "BUYER" ? "SELLER" : "BUYER";
+      
+      // Update role in backend
+      await fetch("/api/auth/role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: newRole }),
+      });
+
+      // Redirect to appropriate dashboard
+      if (newRole === "SELLER") {
+        router.push("/dashboard/seller");
+      } else {
+        router.push("/dashboard/buyer");
+      }
+    } catch (error) {
+      console.error("Failed to switch mode:", error);
+    }
   };
 
   return (
@@ -108,10 +168,11 @@ export default function DashboardLayout({
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b px-4">
           <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-              <Store className="h-5 w-5 text-white" />
+            <img src="/zee-logo.png" alt="ZeeFix Hub" className="w-8 h-8 rounded-lg" />
+            <div>
+              <span className="text-lg font-bold text-gray-900">ZeeFix Hub</span>
+              <p className="text-[10px] text-gray-500">{userRole} Mode</p>
             </div>
-            <span className="text-xl font-bold text-gray-900">Zee</span>
           </Link>
           <Button
             variant="ghost"
@@ -165,16 +226,30 @@ export default function DashboardLayout({
           </nav>
 
           {/* Quick Actions */}
+          {userRole === "SELLER" && (
+            <div className="border-t p-4">
+              <p className="mb-2 text-xs font-semibold uppercase text-gray-400">
+                Quick Actions
+              </p>
+              <Link href="/dashboard/seller/listings/new">
+                <Button className="w-full bg-[#2563EB] hover:bg-[#2563EB]/90">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Listing
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Switch Mode */}
           <div className="border-t p-4">
-            <p className="mb-2 text-xs font-semibold uppercase text-gray-400">
-              Quick Actions
-            </p>
-            <Link href="/dashboard/seller/listings/new">
-              <Button className="w-full bg-[#2563EB] hover:bg-[#2563EB]/90">
-                <Plus className="mr-2 h-4 w-4" />
-                Create Listing
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              onClick={handleSwitchMode}
+              className="w-full"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Switch to {userRole === "BUYER" ? "Seller" : "Buyer"} Mode
+            </Button>
           </div>
 
           {/* Help */}
@@ -204,7 +279,7 @@ export default function DashboardLayout({
               <Menu className="h-5 w-5" />
             </Button>
             <h1 className="text-lg font-semibold text-gray-900 lg:text-xl">
-              Seller Dashboard
+              {userRole === "BUYER" ? "Buyer Dashboard" : "Seller Dashboard"}
             </h1>
           </div>
 
@@ -233,7 +308,7 @@ export default function DashboardLayout({
                       {user?.name || "User"}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {user?.role || "Seller"}
+                      {userRole}
                     </p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-gray-500" />
@@ -250,9 +325,9 @@ export default function DashboardLayout({
                   <Settings className="mr-2 h-4 w-4" />
                   Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Wallet
+                <DropdownMenuItem onClick={handleSwitchMode}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Switch to {userRole === "BUYER" ? "Seller" : "Buyer"} Mode
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
