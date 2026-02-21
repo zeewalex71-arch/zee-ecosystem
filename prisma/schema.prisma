@@ -1,0 +1,468 @@
+// This is your Prisma schema file,
+// Zee Ecosystem - Unified Super-App Database Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER & AUTHENTICATION
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String?
+  name          String?
+  image         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  profile       Profile?
+  listings      Listing[]
+  buyerOrders   Order[]       @relation("BuyerOrders")
+  sellerOrders  Order[]       @relation("SellerOrders")
+  sentMessages  Message[]     @relation("SentMessages")
+  receivedMessages Message[]  @relation("ReceivedMessages")
+  supportTickets SupportTicket[]
+  ticketMessages TicketMessage[]
+  wallet        Wallet?
+  transactions  Transaction[]
+  notifications Notification[]
+  adClicks      AdClick[]
+  sessions      Session[]
+  accounts      Account[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================
+// USER PROFILE
+// ============================================
+
+model Profile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  fullName        String?
+  phone           String?
+  avatar          String?
+  bio             String?
+  location        String?
+  address         String?
+  
+  // Role: BUYER, SELLER, ADMIN
+  role            String    @default("BUYER")
+  
+  // Verification
+  isVerified      Boolean   @default(false)
+  verificationStatus String? // pending, approved, rejected
+  ninNumber       String?
+  idDocument      String?   // URL to uploaded document
+  
+  // Seller specific
+  storeName       String?
+  storeSlug       String?
+  storeDescription String?
+  
+  // Stats
+  totalSales      Int       @default(0)
+  totalPurchases  Int       @default(0)
+  rating          Float     @default(0)
+  reviewCount     Int       @default(0)
+  
+  // Status
+  isActive        Boolean   @default(true)
+  isBanned        Boolean   @default(false)
+  bannedReason    String?
+  frozenUntil     DateTime?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// WALLET & TRANSACTIONS
+// ============================================
+
+model Wallet {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  balance       Float     @default(0)
+  pendingBalance Float    @default(0) // Funds in escrow
+  totalEarned   Float     @default(0)
+  totalSpent    Float     @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+}
+
+model Transaction {
+  id              String    @id @default(cuid())
+  walletId        String
+  userId          String
+  
+  // Transaction type: DEPOSIT, WITHDRAWAL, ESCROW_HOLD, ESCROW_RELEASE, REFUND, PURCHASE
+  type            String
+  amount          Float
+  fee             Float     @default(0)
+  
+  // Status: PENDING, COMPLETED, FAILED, CANCELLED
+  status          String    @default("PENDING")
+  
+  // Reference
+  orderId         String?
+  paystackRef     String?   // Paystack transaction reference
+  description     String?
+  
+  // Balance snapshot
+  balanceBefore   Float
+  balanceAfter    Float
+  
+  createdAt       DateTime  @default(now())
+  
+  wallet          Wallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================
+// LISTINGS (Unified for Digital & Physical)
+// ============================================
+
+enum ListingType {
+  DIGITAL
+  PHYSICAL
+  SERVICE
+}
+
+model Listing {
+  id              String      @id @default(cuid())
+  sellerId        String
+  
+  // Basic Info
+  title           String
+  description     String
+  price           Float
+  currency        String      @default("NGN")
+  
+  // Type: DIGITAL (ZeeGig), PHYSICAL/SERVICE (ZeeFix Hub)
+  type            ListingType @default(DIGITAL)
+  
+  // Category
+  category        String      // AI Art, Video Editing, Fashion, Herbs, Food, Barbers, Errand Runners
+  subcategory     String?
+  tags            String?     // JSON array of tags
+  
+  // Images (JSON array of URLs)
+  images          String?
+  thumbnail       String?
+  
+  // Digital Service Fields (ZeeGig)
+  portfolioUrl    String?
+  deliveryTime    Int?        // in days
+  revisions       Int?        // number of revisions allowed
+  requirements    String?     // what seller needs from buyer
+  
+  // Physical Goods Fields (ZeeFix Hub)
+  weight          Float?      // in kg
+  dimensions      String?     // JSON: {length, width, height}
+  shippingOptions String?     // JSON array of shipping options
+  stockQuantity   Int?
+  sku             String?
+  
+  // Service Fields (ZeeFix Hub - Local Services)
+  serviceArea     String?     // location served
+  availability    String?     // JSON: availability schedule
+  duration        Int?        // service duration in minutes
+  
+  // Status
+  status          String      @default("DRAFT") // DRAFT, ACTIVE, PAUSED, SOLD_OUT, ARCHIVED
+  isFeatured      Boolean     @default(false)
+  
+  // Stats
+  viewCount       Int         @default(0)
+  orderCount      Int         @default(0)
+  rating          Float       @default(0)
+  reviewCount     Int         @default(0)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  seller          User        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  orders          Order[]
+  reviews         Review[]
+}
+
+// ============================================
+// ORDERS & ESCROW
+// ============================================
+
+model Order {
+  id              String    @id @default(cuid())
+  orderNumber     String    @unique
+  
+  // Participants
+  buyerId         String
+  sellerId        String
+  listingId       String
+  
+  // Order Details
+  quantity        Int       @default(1)
+  unitPrice       Float
+  totalAmount     Float
+  serviceFee      Float     @default(0)
+  
+  // Status Flow: PENDING -> PAID (ESCROW) -> IN_PROGRESS -> DELIVERED -> COMPLETED
+  // Or: PENDING -> PAID (ESCROW) -> SHIPPED -> DELIVERED -> COMPLETED
+  // Dispute: Any -> DISPUTED -> RESOLVED/REFUNDED
+  status          String    @default("PENDING")
+  // PENDING, PAID, IN_PROGRESS, SHIPPED, DELIVERED, COMPLETED, CANCELLED, DISPUTED, REFUNDED
+  
+  // Payment Info
+  paymentMethod   String?   // paystack, wallet
+  paymentRef      String?   // Paystack reference
+  paidAt          DateTime?
+  
+  // Escrow Info
+  escrowStatus    String    @default("NONE") // NONE, HOLDING, RELEASED, REFUNDED
+  escrowReleasedAt DateTime?
+  
+  // Delivery Info (Physical)
+  shippingAddress String?   // JSON
+  trackingNumber  String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  
+  // Delivery Info (Digital)
+  deliveryFiles   String?   // JSON array of file URLs
+  deliveryNotes   String?
+  deliveredAt_digital DateTime?
+  
+  // Buyer Requirements
+  requirements    String?   // JSON: buyer's requirements for the service
+  
+  // Dispute
+  disputeReason   String?
+  disputeStatus   String?   // open, resolved
+  disputeResolvedBy String?
+  disputeResolution String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  buyer           User      @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller          User      @relation("SellerOrders", fields: [sellerId], references: [id])
+  listing         Listing   @relation(fields: [listingId], references: [id])
+  messages        Message[]
+  review          Review?
+}
+
+// ============================================
+// MESSAGING & CHAT
+// ============================================
+
+model Message {
+  id          String    @id @default(cuid())
+  orderId     String?
+  senderId    String
+  receiverId  String
+  
+  content     String
+  attachments String?   // JSON array of file URLs
+  
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  
+  createdAt   DateTime  @default(now())
+  
+  order       Order?    @relation(fields: [orderId], references: [id])
+  sender      User      @relation("SentMessages", fields: [senderId], references: [id])
+  receiver    User      @relation("ReceivedMessages", fields: [receiverId], references: [id])
+}
+
+// ============================================
+// SUPPORT TICKETS
+// ============================================
+
+model SupportTicket {
+  id          String    @id @default(cuid())
+  userId      String
+  orderId     String?   // Optional: related order
+  
+  subject     String
+  category    String?   // dispute, payment, technical, other
+  priority    String    @default("NORMAL") // LOW, NORMAL, HIGH, URGENT
+  
+  status      String    @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  resolvedAt  DateTime?
+  resolvedBy  String?
+  
+  user        User      @relation(fields: [userId], references: [id])
+  messages    TicketMessage[]
+}
+
+model TicketMessage {
+  id          String    @id @default(cuid())
+  ticketId    String
+  userId      String
+  content     String
+  attachments String?   // JSON array
+  
+  isFromAdmin Boolean   @default(false)
+  
+  createdAt   DateTime  @default(now())
+  
+  ticket      SupportTicket @relation(fields: [ticketId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+// ============================================
+// REVIEWS
+// ============================================
+
+model Review {
+  id          String    @id @default(cuid())
+  orderId     String    @unique
+  listingId   String
+  reviewerId  String    // Buyer
+  sellerId    String
+  
+  rating      Int       // 1-5
+  title       String?
+  content     String?
+  
+  // Seller response
+  response    String?
+  respondedAt DateTime?
+  
+  isPublic    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  
+  order       Order     @relation(fields: [orderId], references: [id])
+  listing     Listing   @relation(fields: [listingId], references: [id])
+}
+
+// ============================================
+// ADS (Hero Carousel)
+// ============================================
+
+model Ad {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  imageUrl    String
+  linkUrl     String?
+  
+  // Targeting
+  placement   String    @default("HERO_CAROUSEL") // HERO_CAROUSEL, SIDEBAR, BANNER
+  targetMarketplaces String? // JSON: ["zeegig", "zeefix"] or both
+  
+  // Schedule
+  startDate   DateTime?
+  endDate     DateTime?
+  
+  // Status
+  isActive    Boolean   @default(true)
+  
+  // Stats
+  impressions Int       @default(0)
+  clicks      Int       @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  adClicks    AdClick[]
+}
+
+model AdClick {
+  id          String    @id @default(cuid())
+  adId        String
+  userId      String?
+  ipAddress   String?
+  userAgent   String?
+  clickedAt   DateTime  @default(now())
+  
+  ad          Ad        @relation(fields: [adId], references: [id])
+  user        User?     @relation(fields: [userId], references: [id])
+}
+
+// ============================================
+// NOTIFICATIONS
+// ============================================
+
+model Notification {
+  id          String    @id @default(cuid())
+  userId      String
+  
+  type        String    // order, message, payment, dispute, system
+  title       String
+  content     String?
+  link        String?   // URL to relevant page
+  
+  isRead      Boolean   @default(false)
+  readAt      DateTime?
+  
+  createdAt   DateTime  @default(now())
+  
+  user        User      @relation(fields: [userId], references: [id])
+}
+
+// ============================================
+// SYSTEM SETTINGS (Admin Config)
+// ============================================
+
+model Setting {
+  id          String    @id @default(cuid())
+  key         String    @unique
+  value       String    // JSON value
+  description String?
+  
+  updatedAt   DateTime  @updatedAt
+}
