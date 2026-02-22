@@ -93,16 +93,52 @@ model Profile {
   // Role: BUYER, SELLER, ADMIN
   role            String    @default("BUYER")
   
-  // Verification
-  isVerified      Boolean   @default(false)
-  verificationStatus String? // pending, approved, rejected
-  ninNumber       String?
-  idDocument      String?   // URL to uploaded document
+  // ============================================
+  // TRUST-WALL VERIFICATION SYSTEM
+  // ============================================
   
-  // Seller specific
-  storeName       String?
-  storeSlug       String?
-  storeDescription String?
+  // Verification Status: pending, verified, rejected
+  isVerified          Boolean   @default(false)
+  verificationStatus  String    @default("pending") // pending, verified, rejected
+  
+  // Step 1: Legal Identity
+  legalFullName       String?   // Must match ID
+  idType              String?   // NIN, PASSPORT, DRIVERS_LICENSE
+  idNumber            String?   // NIN number or Passport number
+  idDocument          String?   // URL to uploaded ID document (private bucket)
+  idDocumentUrl       String?   // Public URL for admin viewing (signed)
+  
+  // Step 2: Business Details
+  businessName        String?   // Store/Business name
+  businessCategory    String?   // Fashion, Herbs, Errands, Repairs, Food, Barbers, etc.
+  businessBio         String?   // Short business description
+  
+  // Physical Address
+  businessStreet      String?
+  businessCity        String?
+  businessState       String?
+  businessPostalCode  String?
+  
+  // Step 3: Shop Proof (Optional)
+  shopFrontPhoto      String?   // URL to shop front image
+  videoTourUrl        String?   // YouTube or video link
+  
+  // Verification Meta
+  verificationSubmittedAt DateTime?
+  verificationReviewedAt  DateTime?
+  verificationReviewedBy  String?   // Admin who reviewed
+  rejectionReason        String?   // Reason if rejected
+  rejectionDetails       String?   // Detailed rejection explanation
+  
+  // Legacy fields (keeping for compatibility)
+  ninNumber           String?
+  storeName           String?
+  storeSlug           String?
+  storeDescription    String?
+  
+  // ============================================
+  // END TRUST-WALL
+  // ============================================
   
   // Stats
   totalSales      Int       @default(0)

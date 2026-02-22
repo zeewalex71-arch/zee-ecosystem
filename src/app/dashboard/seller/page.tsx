@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   DollarSign,
   Package,
@@ -15,11 +16,16 @@ import {
   AlertCircle,
   Plus,
   ArrowRight,
+  Shield,
+  AlertTriangle,
+  XCircle,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
   Select,
   SelectContent,
@@ -27,6 +33,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Order, Wallet, Listing } from "@/types/index";
 
@@ -37,6 +49,12 @@ interface DashboardStats {
   walletBalance: number;
   totalListings: number;
   activeListings: number;
+}
+
+interface VerificationStatus {
+  isVerified: boolean;
+  verificationStatus: string;
+  rejectionReason: string | null;
 }
 
 interface RecentOrder extends Order {
@@ -67,9 +85,12 @@ const revenueData = [
 ];
 
 export default function SellerDashboardPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [topListings, setTopListings] = useState<Listing[]>([]);
+  const [verification, setVerification] = useState<VerificationStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("30days");
 
@@ -77,6 +98,11 @@ export default function SellerDashboardPage() {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true);
+
+        // Fetch verification status
+        const verificationRes = await fetch("/api/verification/status");
+        const verificationData = await verificationRes.json();
+        setVerification(verificationData.verification);
 
         // Fetch wallet data
         const walletRes = await fetch("/api/wallet");
@@ -163,14 +189,132 @@ export default function SellerDashboardPage() {
     }).format(amount);
   };
 
+  const isVerified = verification?.verificationStatus === "verified";
+  const isPending = verification?.verificationStatus === "pending";
+  const isRejected = verification?.verificationStatus === "rejected";
+
+  // Create Listing Button with tooltip
+  const CreateListingButton = () => {
+    if (!isVerified) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="bg-gray-300 text-gray-500 cursor-not-allowed"
+                disabled
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Create Listing
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="bg-[#112240] text-[#E6E6E6] border-[#233554]">
+              <p className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-[#FFD700]" />
+                Account Verification Required
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return (
+      <Link href="/dashboard/seller/listings/new">
+        <Button className="bg-[#2563EB] hover:bg-[#2563EB]/90">
+          <Plus className="mr-2 h-4 w-4" />
+          Create Listing
+        </Button>
+      </Link>
+    );
+  };
+
   return (
     <div className="space-y-6">
+      {/* Verification Submitted Toast */}
+      {searchParams.get("verification") === "submitted" && (
+        <Alert className="bg-green-50 border-green-200">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <AlertTitle className="text-green-800">Verification Submitted!</AlertTitle>
+          <AlertDescription className="text-green-700">
+            Your verification documents are being reviewed. You&apos;ll be notified once approved.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Trust-Wall Verification Banner */}
+      {verification && !isVerified && (
+        <Alert className={`border-l-4 ${
+          isPending 
+            ? "bg-yellow-50 border-yellow-500" 
+            : isRejected 
+            ? "bg-red-50 border-red-500"
+            : "bg-blue-50 border-blue-500"
+        }`}>
+          {isPending ? (
+            <Clock className="h-5 w-5 text-yellow-600" />
+          ) : isRejected ? (
+            <XCircle className="h-5 w-5 text-red-600" />
+          ) : (
+            <Shield className="h-5 w-5 text-blue-600" />
+          )}
+          <AlertTitle className={
+            isPending 
+              ? "text-yellow-800" 
+              : isRejected 
+              ? "text-red-800"
+              : "text-blue-800"
+          }>
+            {isPending 
+              ? "Verification Under Review" 
+              : isRejected 
+              ? "Verification Rejected"
+              : "Trust-Wall Verification Required"
+            }
+          </AlertTitle>
+          <AlertDescription className={
+            isPending 
+              ? "text-yellow-700" 
+              : isRejected 
+              ? "text-red-700"
+              : "text-blue-700"
+          }>
+            {isPending ? (
+              "Your verification documents are being reviewed by our team. This usually takes 1-2 business days."
+            ) : isRejected ? (
+              <>
+                Your verification was rejected: <strong>{verification.rejectionReason}</strong>.
+                Please correct the issues and resubmit.
+              </>
+            ) : (
+              "Complete your account verification to start listing products and services on ZeeFix Hub."
+            )}
+          </AlertDescription>
+          <Button
+            onClick={() => router.push("/dashboard/seller/verification")}
+            className={`mt-3 ${
+              isPending 
+                ? "bg-yellow-600 hover:bg-yellow-700" 
+                : isRejected 
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-blue-600 hover:bg-blue-700"
+            } text-white`}
+          >
+            {isPending ? "View Status" : isRejected ? "Resubmit Verification" : "Get Verified Now"}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </Alert>
+      )}
+
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
           <p className="text-sm text-gray-500">
-            Welcome back! Here&apos;s what&apos;s happening with your store.
+            {isVerified 
+              ? "Welcome back! Here's what's happening with your store."
+              : "Complete verification to unlock all seller features."
+            }
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -185,12 +329,7 @@ export default function SellerDashboardPage() {
               <SelectItem value="year">This year</SelectItem>
             </SelectContent>
           </Select>
-          <Link href="/dashboard/seller/listings/new">
-            <Button className="bg-[#2563EB] hover:bg-[#2563EB]/90">
-              <Plus className="mr-2 h-4 w-4" />
-              Create Listing
-            </Button>
-          </Link>
+          <CreateListingButton />
         </div>
       </div>
 
@@ -315,19 +454,38 @@ export default function SellerDashboardPage() {
 
       {/* Quick Actions */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="/dashboard/seller/listings/new">
-          <Card className="cursor-pointer transition-all hover:border-[#2563EB] hover:shadow-md">
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="rounded-lg bg-[#2563EB]/10 p-3">
-                <Package className="h-6 w-6 text-[#2563EB]" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">Create Listing</p>
-                <p className="text-sm text-gray-500">Add a new product or service</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Link 
+                href={isVerified ? "/dashboard/seller/listings/new" : "#"}
+                className={isVerified ? "" : "pointer-events-none"}
+              >
+                <Card className={`cursor-pointer transition-all ${isVerified ? "hover:border-[#2563EB] hover:shadow-md" : "opacity-60"}`}>
+                  <CardContent className="flex items-center gap-4 p-4">
+                    <div className="rounded-lg bg-[#2563EB]/10 p-3">
+                      <Package className="h-6 w-6 text-[#2563EB]" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Create Listing</p>
+                      <p className="text-sm text-gray-500">
+                        {!isVerified ? "Verification required" : "Add a new product or service"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </TooltipTrigger>
+            {!isVerified && (
+              <TooltipContent className="bg-[#112240] text-[#E6E6E6] border-[#233554]">
+                <p className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-[#FFD700]" />
+                  Account Verification Required
+                </p>
+              </TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
 
         <Link href="/dashboard/seller/orders">
           <Card className="cursor-pointer transition-all hover:border-[#2563EB] hover:shadow-md">
@@ -517,11 +675,17 @@ export default function SellerDashboardPage() {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <AlertCircle className="h-12 w-12 text-gray-300" />
               <p className="mt-4 text-sm text-gray-500">No listings yet</p>
-              <Link href="/dashboard/seller/listings/new">
-                <Button size="sm" className="mt-4 bg-[#2563EB]">
-                  Create Your First Listing
-                </Button>
-              </Link>
+              {!isVerified ? (
+                <p className="text-xs text-gray-400 mt-2">
+                  Complete verification to create your first listing
+                </p>
+              ) : (
+                <Link href="/dashboard/seller/listings/new">
+                  <Button size="sm" className="mt-4 bg-[#2563EB]">
+                    Create Your First Listing
+                  </Button>
+                </Link>
+              )}
             </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
