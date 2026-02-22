@@ -852,97 +852,110 @@ export default function HomePage() {
   // APP VIEW - Main Application with Midnight Blue & Gold Theme
   return (
     <div className="min-h-screen flex flex-col bg-midnight pb-20 lg:pb-0">
-      {/* Top Header - Desktop */}
-      <header className="hidden lg:flex sticky top-0 z-50 w-full border-b border-midnight-border bg-midnight/95 backdrop-blur">
+      {/* Top Header - Mobile & Desktop */}
+      <header className="sticky top-0 z-50 w-full border-b border-[#233554] bg-[#0A192F]/95 backdrop-blur">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 shrink-0">
+          <Link href="/" className="flex items-center gap-2 shrink-0">
             <Image 
               src="/zee-logo.png" 
               alt="ZeeFix Hub Logo" 
-              width={48} 
-              height={48}
-              className="rounded-lg gold-glow-sm"
+              width={40} 
+              height={40}
+              className="rounded-lg"
             />
-            <div>
-              <span className="font-bold text-lg text-gold">ZeeFix Hub</span>
-              <p className="text-[10px] text-steel -mt-1">by Zee&apos;s Digital Empire</p>
+            <div className="hidden sm:block">
+              <span className="font-bold text-lg text-[#FFD700]">ZeeFix Hub</span>
+              <p className="text-[10px] text-[#8892B0] -mt-1">by Zee's Digital Empire</p>
             </div>
           </Link>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-xl">
+          {/* Search Bar - Desktop */}
+          <div className="hidden md:flex flex-1 max-w-xl">
             <div className="relative w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-steel" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8892B0]" />
               <Input
                 placeholder="Search services, products, vendors..."
-                className="pl-11 pr-4 h-10 rounded-full bg-midnight-light border-midnight-border text-offwhite placeholder-steel focus:border-gold focus:ring-gold"
+                className="pl-11 pr-4 h-10 rounded-full bg-[#112240] border-[#233554] text-[#E6E6E6] placeholder-[#8892B0] focus:border-[#FFD700] focus:ring-[#FFD700]"
               />
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex items-center gap-6">
-            <Link href="/" className="text-sm font-medium text-gold">Home</Link>
-            <Link href="/explore" className="text-sm font-medium text-steel hover:text-gold">Explore Hub</Link>
-            <Link href="/dashboard/seller" className="text-sm font-medium text-steel hover:text-gold">My Activity</Link>
+          {/* Navigation - Desktop */}
+          <nav className="hidden lg:flex items-center gap-6">
+            <Link href="/" className="text-sm font-medium text-[#FFD700]">Home</Link>
+            <Link href="/explore" className="text-sm font-medium text-[#8892B0] hover:text-[#FFD700]">Explore Hub</Link>
+            <Link href="/dashboard/seller" className="text-sm font-medium text-[#8892B0] hover:text-[#FFD700]">My Activity</Link>
             
             {/* Notifications */}
-            <button className="p-2 text-steel hover:text-gold relative">
+            <button className="p-2 text-[#8892B0] hover:text-[#FFD700] relative">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-gold rounded-full"></span>
+              <span className="absolute top-1 right-1 w-2 h-2 bg-[#FFD700] rounded-full"></span>
+            </button>
+          </nav>
+
+          {/* User Menu */}
+          <div className="flex items-center gap-2">
+            {/* Mobile Search Button */}
+            <button className="md:hidden p-2 text-[#8892B0] hover:text-[#FFD700]">
+              <Search className="w-5 h-5" />
             </button>
             
-            {/* User Menu */}
+            {/* Notifications - Mobile */}
+            <button className="lg:hidden p-2 text-[#8892B0] hover:text-[#FFD700] relative">
+              <Bell className="w-5 h-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-[#FFD700] rounded-full"></span>
+            </button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-2 p-1.5 rounded-full hover:bg-midnight-light transition-colors">
+                <button className="flex items-center gap-2 p-1.5 rounded-full hover:bg-[#112240] transition-colors">
                   {user?.image ? (
-                    <img src={user.image} alt={user.name || "User"} className="w-8 h-8 rounded-full object-cover" />
+                    <img src={user.image} alt={user.name || "User"} className="w-8 h-8 rounded-full object-cover border-2 border-[#FFD700]" />
                   ) : (
-                    <div className="w-8 h-8 rounded-full bg-gold text-midnight flex items-center justify-center font-medium text-sm">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FFD700] to-[#FFA500] text-[#0A192F] flex items-center justify-center font-bold text-sm">
                       {user?.name?.charAt(0)?.toUpperCase() || "U"}
                     </div>
                   )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 p-2 bg-midnight-light border-midnight-border">
-                <div className="px-2 py-3 border-b border-midnight-border mb-2">
-                  <p className="font-medium text-offwhite text-sm">{user?.name || "User"}</p>
-                  <p className="text-xs text-steel">{user?.email}</p>
+              <DropdownMenuContent align="end" className="w-56 p-2 bg-[#112240] border-[#233554]">
+                <div className="px-2 py-3 border-b border-[#233554] mb-2">
+                  <p className="font-medium text-[#E6E6E6] text-sm">{user?.name || "User"}</p>
+                  <p className="text-xs text-[#8892B0]">{user?.email}</p>
                   {user?.isVerified && (
-                    <div className="flex items-center gap-1 mt-1 text-xs text-gold">
+                    <div className="flex items-center gap-1 mt-1 text-xs text-[#FFD700]">
                       <CheckCircle2 className="w-3 h-3" />
                       Verified
                     </div>
                   )}
                 </div>
-                <DropdownMenuItem asChild className="cursor-pointer py-2 text-offwhite hover:text-gold focus:text-gold">
+                <DropdownMenuItem asChild className="cursor-pointer py-2 text-[#E6E6E6] hover:text-[#FFD700] focus:text-[#FFD700]">
                   <Link href="/dashboard/seller" className="flex items-center gap-3">
-                    <LayoutDashboard className="w-4 h-4 text-steel" />
+                    <LayoutDashboard className="w-4 h-4 text-[#8892B0]" />
                     <span>Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer py-2 text-offwhite hover:text-gold focus:text-gold">
+                <DropdownMenuItem asChild className="cursor-pointer py-2 text-[#E6E6E6] hover:text-[#FFD700] focus:text-[#FFD700]">
                   <Link href="/dashboard/seller/wallet" className="flex items-center gap-3">
-                    <Wallet className="w-4 h-4 text-steel" />
+                    <Wallet className="w-4 h-4 text-[#8892B0]" />
                     <span>Wallet</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer py-2 text-offwhite hover:text-gold focus:text-gold">
+                <DropdownMenuItem asChild className="cursor-pointer py-2 text-[#E6E6E6] hover:text-[#FFD700] focus:text-[#FFD700]">
                   <Link href="/dashboard/settings" className="flex items-center gap-3">
-                    <Settings className="w-4 h-4 text-steel" />
+                    <Settings className="w-4 h-4 text-[#8892B0]" />
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-midnight-border" />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer py-2 text-coral focus:text-coral">
+                <DropdownMenuSeparator className="bg-[#233554]" />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer py-2 text-red-400 focus:text-red-400 hover:bg-red-500/10">
                   <LogOut className="w-4 h-4 mr-3" />
                   <span>Log Out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </nav>
+          </div>
         </div>
       </header>
 
