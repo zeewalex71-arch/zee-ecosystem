@@ -13,7 +13,7 @@ import {
   Calendar,
   Target,
   Image as ImageIcon,
-  Switch,
+  ToggleLeft,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -256,7 +256,7 @@ export default function AdManagerPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-green-100 p-2">
-                <Switch className="h-5 w-5 text-green-600" />
+                <ToggleLeft className="h-5 w-5 text-green-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active Ads</p>
@@ -363,7 +363,7 @@ export default function AdManagerPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => toggleMutation.mutate({ id: ad.id, isActive: !ad.isActive })}>
-                        <Switch className="mr-2 h-4 w-4" />
+                        <ToggleLeft className="mr-2 h-4 w-4" />
                         {ad.isActive ? "Deactivate" : "Activate"}
                       </DropdownMenuItem>
                       {ad.linkUrl && (
